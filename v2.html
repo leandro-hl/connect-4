@@ -5,32 +5,30 @@
     <title>Title</title>
     <style>
         #container {
-            width: 100%;
-            height: 250px;
             display: flex;
             flex-direction: column;
+            width: 100%;
+            height: 250px;
         }
-
         .row {
+            width: 100%;
             display: flex;
         }
-
         .cell {
             width: 50px;
             height: 50px;
         }
-
         .cell button {
             width: 100%;
             height: 100%;
         }
-
         .red {
             background-color: red;
         }
         .yellow {
             background-color: yellow;
         }
+
     </style>
 </head>
 <body>
@@ -43,11 +41,15 @@
     <div class="row"></div>
 </div>
 <script>
+    /*
+        populate the board
+        set styles
+     */
     const ROWS = 6;
     const COLUMNS = 7;
     const EXPECTED = 4;
-    let game = [];
     let freeRows = [];
+    let game = [];
     let token = 'red';
 
     (function() {
@@ -55,13 +57,12 @@
         for(let i=0;i<ROWS;i++) {
             game.push([])
             for(let j=0;j<COLUMNS;j++) {
-                //cells
                 const id = `${i}${j}`
                 const cell = document.createElement('div')
                 cell.setAttribute('class', 'cell')
                 const btn = document.createElement('button')
-                btn.setAttribute('id',id)
                 btn.innerText=id
+                btn.setAttribute('id', id)
                 btn.onclick = (ev) => {
                     const id = ev.target.getAttribute('id')
                     const column = id%10
@@ -69,6 +70,7 @@
                 }
                 cell.insertAdjacentElement('beforeend', btn)
                 rows.item(i).insertAdjacentElement('beforeend', cell)
+                //'' as start value
                 game[i].push('')
             }
         }
@@ -76,160 +78,169 @@
         for(let j=0;j<COLUMNS;j++) {
             freeRows.push(ROWS-1)
         }
+        console.log(game)
     })()
-
     function columnSelected(column) {
+        //first free row?
         const free = freeRows[column]
-        if(free<0) return
-
+        if(free<0) {
+            return
+        }
         freeRows[column]--
-        const id = `${free}${column}`
-        const btn = document.getElementById(id)
-        btn.setAttribute('disabled', 'true')
+        const btnId = `${free}${column}`
+        const btn = document.getElementById(btnId)
+        //set color
         btn.setAttribute('class', token)
+        btn.setAttribute('disabled', 'true')
         game[free][column]=token
-        checkWon(token, free, column)
-        token = token === 'red' ? 'yellow': 'red'
+        checkWin(token, free, column)
+        token = token === 'red'? 'yellow':'red'
     }
-    function checkWon(color, row, column) {
-        //horizontal (row remains the same but column increases/decreases one up to EXPECTED or limit (overflow or another color)
-        let found = 1;
-        for(let i=found;i<EXPECTED;i++) {
-            if(column-i<0) break
+    function checkWin(color, row, column) {
+        //I expected to find to my left, right / top, bottom - as much as EXPECTED of my own value
+        //we use a board memory game to not have to parse html
 
+        //horizontally (row does not change)
+        let found = 1
+        for(let i=found;i<EXPECTED;i++) {
+            if(column-i<0) break //overflow
             const val = game[row][column-i]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
         for(let i=found;i<EXPECTED;i++) {
-            if(column+i>=COLUMNS) break
-
+            if(column+i>=COLUMNS) break //overflow
             const val = game[row][column+i]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
+        //horizontally we found the 4 contiguous elements of the same color
         if(found === EXPECTED) {
-            console.log(`You won! horizontally ${color}`)
+            alert(`You won horizontally! ${color}`)
             reset()
             return
         }
 
-        //vertical (column remains the same but row increases/decreases one up to EXPECTED or limit (overflow or another color)
-        found = 1;
+        //vertical (column does not change)
+        found = 1
         for(let i=found;i<EXPECTED;i++) {
-            if(row-i<0) break
-
+            if(row-i<0) break //overflow
             const val = game[row-i][column]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
         for(let i=found;i<EXPECTED;i++) {
-            if(row+i>=ROWS) break
-
+            if(row+i>=ROWS) break //overflow
             const val = game[row+i][column]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
+        //vertically we found the 4 contiguous elements of the same color
         if(found === EXPECTED) {
-            console.log(`You won! vertically ${color}`)
+            alert(`You won vertically! ${color}`)
             reset()
             return
         }
 
-        //left diagonal (row and column increases/decreases at the same time up to EXPECTED or limit (overflow or another color)
-        found = 1;
+        //left diagonal (column and row change by subtracting or adding one to both)
+        found = 1
         for(let i=found;i<EXPECTED;i++) {
-            if(row-i<0) break
+            if(row-i<0) break //overflow
             if(column-i<0) break
 
             const val = game[row-i][column-i]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
         for(let i=found;i<EXPECTED;i++) {
-            if(row+i>=ROWS) break
+            if(row+i>=ROWS) break //overflow
             if(column+i>=COLUMNS) break
 
             const val = game[row+i][column+i]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
+        //left diagonal we found the 4 contiguous elements of the same color
         if(found === EXPECTED) {
-            console.log(`You won! left diagonally ${color}`)
+            alert(`You won left diagonal! ${color}`)
             reset()
             return
         }
 
-        //right diagonal (row decreases when column increases and vise versa up to EXPECTED or limit (overflow or another color)
-        found = 1;
+        //right diagonal (column and row change by subtracting to one and adding to the other)
+        found = 1
         for(let i=found;i<EXPECTED;i++) {
-            if(row-i<0) break
+            if(row-i<0) break //overflow
             if(column+i>=COLUMNS) break
 
             const val = game[row-i][column+i]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
         for(let i=found;i<EXPECTED;i++) {
-            if(row+i>=ROWS) break
+            if(row+i>=ROWS) break //overflow
             if(column-i<0) break
 
             const val = game[row+i][column-i]
             if(val === color) {
                 found++
             } else {
-                break
+                break //other color
             }
         }
 
+        //right diagonal we found the 4 contiguous elements of the same color
         if(found === EXPECTED) {
-            console.log(`You won! right diagonally ${color}`)
+            alert(`You won right diagonal! ${color}`)
             reset()
         }
     }
     function reset() {
-        for(let j=0;j<COLUMNS;j++) {
-            freeRows[j]=ROWS-1
-        }
-
+        game = []
+        freeRows = []
+        token = 'red'
         for(let i=0;i<ROWS;i++) {
+            game.push([])
             for(let j=0;j<COLUMNS;j++) {
-                game[i][j]=''
                 const id = `${i}${j}`
                 const btn = document.getElementById(id)
                 btn.removeAttribute('class')
                 btn.removeAttribute('disabled')
+                game[i].push('')
             }
         }
-        token = 'red'
+
+        for(let j=0;j<COLUMNS;j++) {
+            freeRows.push(ROWS-1)
+        }
     }
 </script>
 </body>
