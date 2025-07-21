@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .board {
+            width: 100%;
+            height: 50vh;
+            border: 1px solid black;
+            display: flex;
+            flex-direction: column;
+        }
+        .row {
+            display: flex;
+            flex-direction: row;
+        }
+        .square {
+            width: 20px;
+            height: 20px;
+        }
+        .square button {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<!--grid of buttons 6 rows and 7 columns-->
+<div class="board">
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+</div>
+<script>
+    (function start() {
+        console.log("executing start")
+        const rows = document.getElementsByClassName('row')
+        console.log(rows)
+        for(let i=0;i<rows.length;i++) {
+            const row = rows.item(i)
+            for(let j=0;j<7;j++) {
+                const cell = document.createElement('div')
+                const btn = document.createElement('button')
+                btn.id=`${i}${j}`
+                btn.className='square'
+                btn.onclick=(ev) => press(ev.target.getAttribute('id'))
+                cell.insertAdjacentElement('beforeend', btn)
+                row.insertAdjacentElement('beforeend', cell)
+            }
+        }
+    })()
+
+    let turn = '1'
+    function press(id) {
+        console.log(id)
+        //once pressed set as disabled
+        //store last pressed to switch between one and the other (input hidden)
+        //analyze if from my position, all in the same row, or column or diagonal has the same values
+        if (turn === '1') {
+            turn = '2'
+        } else {
+            turn = '1'
+        }
+        const btn = document.getElementById(id)
+        btn.innerText=turn
+        btn.setAttribute('disabled', 'true')
+        gameFinished(id, btn)
+    }
+    function gameFinished(id, curr) {
+        //max to win is four no the whole line
+        const threshold = 4
+        const columns = 7
+        const rows = 6
+
+        //check row
+        const row = Math.floor(id / 10)
+        console.log('row is ' + row)
+        let count = 0
+        for(let i=0;i<columns;i++) {
+            const tempId = `${row}${i}`
+            let temp = curr
+            if(tempId!==id) {
+                temp = document.getElementById(tempId)
+            }
+            if(temp.innerText===turn) {
+                count++
+            } else if(checkWon(count, threshold)) {
+                return
+            } else {
+                count=0
+            }
+        }
+
+        if(checkWon(count, threshold)) {
+            return
+        }
+
+        //check column
+        const column = id % 10
+        console.log('columns is ' + column)
+        count = 0
+        for(let i=0;i<rows;i++) {
+            const tempId = `${i}${column}`
+            let temp = curr
+            if(tempId!==id) {
+                temp = document.getElementById(tempId)
+            }
+            if(temp.innerText===turn) {
+                count++
+            } else if(checkWon(count, threshold)) {
+                return
+            } else {
+                count=0
+            }
+        }
+
+        if(checkWon(count, threshold)) {
+            return
+        }
+
+        //check left diagonal
+        //diagonal should be at least 4 spaces long...
+        if(rows-row+column>=threshold && columns-column+row>=threshold) {
+            count = 0
+            let rowStart = row-column
+            let columnStart = column-column
+            if(rowStart<0) {
+                const temp = rowStart*-1
+                rowStart=columnStart
+                columnStart=temp
+            }
+
+            while(rowStart<rows && columnStart<columns) {
+                const element = document.getElementById(`${rowStart}${columnStart}`)
+                if(element.innerText===turn) {
+                    count++
+                } else if(checkWon(count, threshold)) {
+                    return
+                } else {
+                    count=0
+                }
+                rowStart++
+                columnStart++
+            }
+
+            if(checkWon(count, threshold)) {
+                return
+            }
+
+            //6-2=4
+            //6-5=1+3=4
+            //position = ROW-COLUMN
+            //my position is 4-2 (offset from 2-2 => +2 0) => instead of checking from 0-0, I check from 0+2 - 0+0
+            //my position is 3-1 (offset from 1-1 => +2 0) => instead of checking from 0-0, I check from 0+2 - 0+0
+            //my position is 3-2 (offset from 2-2 => +1 0) => instead of checking from 0-0, I check from 0+1 - 0+0
+            //my position is 1-4 (offset from 4-4 => -3 0) => instead of checking from 0-0, I check from 0+1 - 0+0 (negative means row and column exchange)
+            //my position is 3-4 (offset from 4-4 => -1 0) => instead of checking from 0-0, I check from 0+1 - 0+0 (negative means row and column exchange)
+            // iterate until i=rows or j=columns
+            //I need to check every space that is part of this row-column diagonal.
+            /*
+                check:
+                2-0
+                3-1
+                4-2 --> im here
+                5-3
+                ----- matrix is mxn
+                0-0
+                1-1
+                2-2
+                3-3
+                4-4
+                5-5
+                -----
+                0-1
+                1-2
+                2-3
+                4-5
+                6-7
+                8-9
+             */
+        }
+
+
+        //check right diagonal
+        if(rows-row+column>=threshold && (columns-column)+(rows-row-1)>=threshold) {
+            console.log('four spaces!!')
+            count = 0
+            let rowStart = row+column //4+2
+            let columnStart = 0 //2
+            if(rowStart>rows-1) {
+                columnStart = rowStart%(rows-1)
+                rowStart=rowStart-columnStart
+            }
+
+            //7-6-2 is ok
+            //7-5-3 is ok
+            //
+
+            while(rowStart>0 && columnStart<columns) {
+                const element = document.getElementById(`${rowStart}${columnStart}`)
+                if(element.innerText===turn) {
+                    count++
+                } else if(checkWon(count, threshold)) {
+                    return
+                } else {
+                    count=0
+                }
+                rowStart--
+                columnStart++
+            }
+
+            if(checkWon(count, threshold)) {
+                return
+            }
+
+            //position = ROW-COLUMN
+            //my position is 3-0
+            //my position is 2-1
+            //my position is 1-2 --> im here. I can go up to 0-3 (row becomes negative) or from 3-0 (column becomes negative)
+            //                      when you increase one, decrease the other. Always start at column 0 and row =row+column
+            //my position is 0-3
+        }
+        checkWon(count, threshold)
+    }
+
+    function checkWon(count, threshold) {
+        if(count >= threshold) {
+            didWon()
+            return true
+        }
+        return false
+    }
+    function didWon() {
+        alert('You won!')
+        restart()
+    }
+    function restart() {
+
+    }
+</script>
+</body>
+</html>

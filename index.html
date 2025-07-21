@@ -4,31 +4,37 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <style>
-        .board {
-            width: 100%;
-            height: 50vh;
-            border: 1px solid black;
+        .container{
             display: flex;
             flex-direction: column;
+            width: 50%;
+            height: 250px;
         }
         .row {
+            width: 100%;
+            height: 50px;
             display: flex;
-            flex-direction: row;
         }
-        .square {
-            width: 20px;
-            height: 20px;
+        .cell {
+            width: 50px;
+            height: 50px;
         }
-        .square button {
+        .cell button {
             width: 100%;
             height: 100%;
         }
+        .red {
+            background-color: red;
+        }
+        .yellow {
+            background-color: yellow;
+        }
+
     </style>
 </head>
 <body>
 
-<!--grid of buttons 6 rows and 7 columns-->
-<div class="board">
+<div class="container">
     <div class="row"></div>
     <div class="row"></div>
     <div class="row"></div>
@@ -36,212 +42,226 @@
     <div class="row"></div>
     <div class="row"></div>
 </div>
+
 <script>
-    (function start() {
-        console.log("executing start")
-        const rows = document.getElementsByClassName('row')
-        console.log(rows)
-        for(let i=0;i<rows.length;i++) {
-            const row = rows.item(i)
-            for(let j=0;j<7;j++) {
+    const ROWS = 6;
+    const COLUMNS = 7;
+    let token = 'red';
+    let freeRows = [];
+    let game = [];
+    function start() {
+        const rows = document.getElementsByClassName('row');
+        for(let i=0;i<ROWS;i++) {
+            game.push([])
+            for(let j=0;j<COLUMNS;j++) {
+                const id = `${i}${j}`
                 const cell = document.createElement('div')
+                cell.setAttribute('class', 'cell')
                 const btn = document.createElement('button')
-                btn.id=`${i}${j}`
-                btn.className='square'
-                btn.onclick=(ev) => press(ev.target.getAttribute('id'))
+                btn.setAttribute('id', id)
+                btn.innerText=id
+                btn.onclick=(ev) => {
+                    //I only care about the column it is on.
+                    const id = ev.target.getAttribute('id')
+                    const column = id%10
+                    selectedColumn(column)
+                }
                 cell.insertAdjacentElement('beforeend', btn)
-                row.insertAdjacentElement('beforeend', cell)
+                rows.item(i).insertAdjacentElement('beforeend', cell)
+                game[i].push(0)
             }
         }
-    })()
 
-    let turn = '1'
-    function press(id) {
-        console.log(id)
-        //once pressed set as disabled
-        //store last pressed to switch between one and the other (input hidden)
-        //analyze if from my position, all in the same row, or column or diagonal has the same values
-        if (turn === '1') {
-            turn = '2'
-        } else {
-            turn = '1'
+        for(let j=0;j<COLUMNS;j++) {
+            freeRows.push(ROWS-1)
         }
+        console.log(game)
+    }
+
+    function selectedColumn(j) {
+        //check which is the last free row in that column
+        const free = freeRows[j]
+        if(free===-1) {
+            return
+        }
+        freeRows[j]--
+        const id = `${free}${j}`
         const btn = document.getElementById(id)
-        btn.innerText=turn
+        btn.setAttribute('class', token)
         btn.setAttribute('disabled', 'true')
-        gameFinished(id, btn)
+        game[free][j]=token === 'red'? 1:2
+        checkWin(free, j, token === 'red'? 1:2)
+        token=token==='red'? 'yellow': 'red'
     }
-    function gameFinished(id, curr) {
-        //max to win is four no the whole line
-        const threshold = 4
-        const columns = 7
-        const rows = 6
 
-        //check row
-        const row = Math.floor(id / 10)
-        console.log('row is ' + row)
-        let count = 0
-        for(let i=0;i<columns;i++) {
-            const tempId = `${row}${i}`
-            let temp = curr
-            if(tempId!==id) {
-                temp = document.getElementById(tempId)
-            }
-            if(temp.innerText===turn) {
-                count++
-            } else if(checkWon(count, threshold)) {
-                return
+    function checkWin(row, column, color) {
+        /*
+            from the one selected
+            I am one of an array of 4.
+            whether I check in one direction or another, I need to look at 3 places from where I am
+            I look at my left
+            count how many of the same color I have (up to three).
+            if I encounter another color i finish checking on that direction
+            if I overflow (index horizontal < 0 or > 6 I finish checking on that direction
+            now I check at the opposite direction for the difference between found vs total
+                example: if I found two I need to check for one in the opposite direction
+                that is total - found places
+
+            same for horizontal and diagonals.
+            check what can be reused
+
+
+            game:
+                0: no input
+                1: red
+                2: yellow
+         */
+        let found = 1
+        const expected = 4
+        //left horizontal
+        for(let i=found;i<expected;i++) {
+            if(column-i<0) break
+
+            const check = game[row][column-i]
+            if(check===color) {
+                found++
             } else {
-                count=0
+                break
             }
         }
+        for(let i=found;i<expected;i++) {
+            if(column+i>=COLUMNS) break
 
-        if(checkWon(count, threshold)) {
-            return
-        }
-
-        //check column
-        const column = id % 10
-        console.log('columns is ' + column)
-        count = 0
-        for(let i=0;i<rows;i++) {
-            const tempId = `${i}${column}`
-            let temp = curr
-            if(tempId!==id) {
-                temp = document.getElementById(tempId)
-            }
-            if(temp.innerText===turn) {
-                count++
-            } else if(checkWon(count, threshold)) {
-                return
+            const check = game[row][column+i]
+            if(check===color) {
+                found++
             } else {
-                count=0
+                break
+            }
+        }
+        if (found === expected) {
+            alert(`You won! ${color}`)
+            reset()
+        }
+
+        //check vertical
+        found = 1
+        for(let i=found;i<expected;i++) {
+            if(row-i<0) break
+
+            const check = game[row-i][column]
+            if(check===color) {
+                found++
+            } else {
+                break
+            }
+        }
+        for(let i=found;i<expected;i++) {
+            if(row+i>=ROWS) break
+
+            const check = game[row+i][column]
+            if(check===color) {
+                found++
+            } else {
+                break
             }
         }
 
-        if(checkWon(count, threshold)) {
-            return
+        if (found === expected) {
+            alert(`You won! ${color}`)
+            reset()
         }
 
-        //check left diagonal
-        //diagonal should be at least 4 spaces long...
-        if(rows-row+column>=threshold && columns-column+row>=threshold) {
-            count = 0
-            let rowStart = row-column
-            let columnStart = column-column
-            if(rowStart<0) {
-                const temp = rowStart*-1
-                rowStart=columnStart
-                columnStart=temp
-            }
+        found = 1
+        //check diagonal left
+        for(let i=found;i<expected;i++) {
+            if(row-i<0) break
+            if(column-i<0) break
 
-            while(rowStart<rows && columnStart<columns) {
-                const element = document.getElementById(`${rowStart}${columnStart}`)
-                if(element.innerText===turn) {
-                    count++
-                } else if(checkWon(count, threshold)) {
-                    return
-                } else {
-                    count=0
-                }
-                rowStart++
-                columnStart++
+            const check = game[row-i][column-i]
+            if(check===color) {
+                found++
+            } else {
+                break
             }
+        }
+        for(let i=found;i<expected;i++) {
+            if(row+i>=ROWS) break
+            if(column+i>=COLUMNS) break
 
-            if(checkWon(count, threshold)) {
-                return
+            const check = game[row+i][column+i]
+            if(check===color) {
+                found++
+            } else {
+                break
             }
-
-            //6-2=4
-            //6-5=1+3=4
-            //position = ROW-COLUMN
-            //my position is 4-2 (offset from 2-2 => +2 0) => instead of checking from 0-0, I check from 0+2 - 0+0
-            //my position is 3-1 (offset from 1-1 => +2 0) => instead of checking from 0-0, I check from 0+2 - 0+0
-            //my position is 3-2 (offset from 2-2 => +1 0) => instead of checking from 0-0, I check from 0+1 - 0+0
-            //my position is 1-4 (offset from 4-4 => -3 0) => instead of checking from 0-0, I check from 0+1 - 0+0 (negative means row and column exchange)
-            //my position is 3-4 (offset from 4-4 => -1 0) => instead of checking from 0-0, I check from 0+1 - 0+0 (negative means row and column exchange)
-            // iterate until i=rows or j=columns
-            //I need to check every space that is part of this row-column diagonal.
-            /*
-                check:
-                2-0
-                3-1
-                4-2 --> im here
-                5-3
-                ----- matrix is mxn
-                0-0
-                1-1
-                2-2
-                3-3
-                4-4
-                5-5
-                -----
-                0-1
-                1-2
-                2-3
-                4-5
-                6-7
-                8-9
-             */
+        }
+        if (found === expected) {
+            alert(`You won! ${color}`)
+            reset()
         }
 
-
+        found = 1
         //check right diagonal
-        if(rows-row+column>=threshold && (columns-column)+(rows-row-1)>=threshold) {
-            console.log('four spaces!!')
-            count = 0
-            let rowStart = row+column //4+2
-            let columnStart = 0 //2
-            if(rowStart>rows-1) {
-                columnStart = rowStart%(rows-1)
-                rowStart=rowStart-columnStart
+        for(let i=found;i<expected;i++) {
+            if(row+i>=ROWS) break
+            if(column-i<0) break
+
+            const check = game[row+i][column-i]
+            if(check===color) {
+                found++
+            } else {
+                break
             }
-
-            //7-6-2 is ok
-            //7-5-3 is ok
-            //
-
-            while(rowStart>0 && columnStart<columns) {
-                const element = document.getElementById(`${rowStart}${columnStart}`)
-                if(element.innerText===turn) {
-                    count++
-                } else if(checkWon(count, threshold)) {
-                    return
-                } else {
-                    count=0
-                }
-                rowStart--
-                columnStart++
-            }
-
-            if(checkWon(count, threshold)) {
-                return
-            }
-
-            //position = ROW-COLUMN
-            //my position is 3-0
-            //my position is 2-1
-            //my position is 1-2 --> im here. I can go up to 0-3 (row becomes negative) or from 3-0 (column becomes negative)
-            //                      when you increase one, decrease the other. Always start at column 0 and row =row+column
-            //my position is 0-3
         }
-        checkWon(count, threshold)
-    }
+        for(let i=found;i<expected;i++) {
+            if(row-i<0) break
+            if(column+i>=COLUMNS) break
 
-    function checkWon(count, threshold) {
-        if(count >= threshold) {
-            didWon()
-            return true
+            const check = game[row-i][column+i]
+            if(check===color) {
+                found++
+            } else {
+                break
+            }
         }
-        return false
-    }
-    function didWon() {
-        alert('You won!')
-        restart()
-    }
-    function restart() {
+        if (found === expected) {
+            alert(`You won! ${color}`)
+            reset()
+        }
 
     }
+    function reset() {
+        freeRows = [];
+        for(let j=0;j<COLUMNS;j++) {
+            freeRows.push(ROWS-1)
+        }
+        game = [];
+        token = 'red';
+        for(let i=0;i<ROWS;i++) {
+            game.push([])
+            for(let j=0;j<COLUMNS;j++) {
+                const id = `${i}${j}`
+                const btn = document.getElementById(id)
+                btn.removeAttribute('disabled')
+                btn.removeAttribute('class')
+                game[i].push(0)
+            }
+        }
+    }
+    start()
+    /*
+    11:38 - 12:10 (32min just for the rendering)
+    making it work took me another 46minutes (without refactoring)
+        connect 4
+        the game consists of making a line of 4 tokens whether vertical, horizontal, right diagonal, left diagonal
+        the token are dropped by the two players from the top, and it goes down to the first available spot in the chosen column
+        the player selects a column and drops the token which travels down to the first available spot in that column
+
+        0.0- the board is a matrix of n x m where n=6 (rows) and m=7 (columns) - OK
+        0.1- the token value switch to represent every player turn by turn
+        1- the token goes down to the first available spot in the chosen column
+     */
 </script>
 </body>
 </html>
