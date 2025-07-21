@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .container{
+            display: flex;
+            flex-direction: column;
+            width: 50%;
+            height: 250px;
+        }
+        .row {
+            width: 100%;
+            height: 50px;
+            display: flex;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+        }
+        .cell button {
+            width: 100%;
+            height: 100%;
+        }
+        .red {
+            background-color: red;
+        }
+        .yellow {
+            background-color: yellow;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+</div>
+
+<script>
+    const ROWS = 6;
+    const COLUMNS = 7;
+    const EXPECTED = 4;
+    let token = 'red';
+    let freeRows = [];
+    let game = [];
+    function start() {
+        const rows = document.getElementsByClassName('row');
+        for(let i=0;i<ROWS;i++) {
+            game.push([])
+            for(let j=0;j<COLUMNS;j++) {
+                const id = `${i}${j}`
+                const cell = document.createElement('div')
+                cell.setAttribute('class', 'cell')
+                const btn = document.createElement('button')
+                btn.setAttribute('id', id)
+                btn.innerText=id
+                btn.onclick=(ev) => {
+                    //I only care about the column it is on.
+                    const id = ev.target.getAttribute('id')
+                    const column = id%10
+                    selectedColumn(column)
+                }
+                cell.insertAdjacentElement('beforeend', btn)
+                rows.item(i).insertAdjacentElement('beforeend', cell)
+                game[i].push(0)
+            }
+        }
+
+        for(let j=0;j<COLUMNS;j++) {
+            freeRows.push(ROWS-1)
+        }
+        console.log(game)
+    }
+
+    function selectedColumn(j) {
+        //check which is the last free row in that column
+        const free = freeRows[j]
+        if(free===-1) {
+            return
+        }
+        freeRows[j]--
+        const id = `${free}${j}`
+        const btn = document.getElementById(id)
+        btn.setAttribute('class', token)
+        btn.setAttribute('disabled', 'true')
+        game[free][j]=token
+        token=token==='red'? 'yellow': 'red'
+        checkWin(free, j, token)
+    }
+
+    function checkWin(row, column, color) {
+        /*
+            from the one selected
+            I am one of an array of 4.
+            whether I check in one direction or another, I need to look at 3 places from where I am
+            I look at my left
+            count how many of the same color I have (up to three).
+            if I encounter another color i finish checking on that direction
+            if I overflow (index horizontal < 0 or > 6 I finish checking on that direction
+            now I check at the opposite direction for the difference between found vs total
+                example: if I found two I need to check for one in the opposite direction
+                that is total - found places
+
+            same for horizontal and diagonals.
+            check what can be reused
+
+
+            game:
+                0: no input
+                1: red
+                2: yellow
+         */
+        let found = 1
+        //left horizontal
+        check(found, EXPECTED, color, (i) => {
+            if(column-i<0) return null
+            return game[row][column-i]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(column-i<0) break
+        //     const check = game[row][column-i]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+        check(found, EXPECTED, color, (i) => {
+            if(column+i>=COLUMNS) return null
+            return game[row][column+i]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(column+i>=COLUMNS) break
+        //     const check = game[row][column+i]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+        //
+        // if (found === EXPECTED) {
+        //     alert(`You won! ${color}`)
+        //     reset()
+        // }
+
+        //check vertical
+        found = 1
+        check(found, EXPECTED, color, (i) => {
+            if(row-i<0) return null
+            return game[row-i][column]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(row-i<0) break
+        //     const check = game[row-i][column]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+
+        check(found, EXPECTED, color, (i) => {
+            if(row+i>=ROWS) return null
+            return game[row+i][column]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(row+i>=ROWS) break
+        //     const check = game[row+i][column]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+        //
+        // if (found === EXPECTED) {
+        //     alert(`You won! ${color}`)
+        //     reset()
+        // }
+
+        found = 1
+        //check diagonal left
+        check(found, EXPECTED, color, (i) => {
+            if(row-i<0) return null
+            if(column-i<0) return null
+            return game[row-i][column-i]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(row-i<0) break
+        //     if(column-i<0) break
+        //     const check = game[row-i][column-i]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+        check(found, EXPECTED, color, (i) => {
+            if(row+i>=ROWS) return null
+            if(column+i>=COLUMNS) return null
+            return game[row+i][column+i]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(row+i>=ROWS) break
+        //     if(column+i>=COLUMNS) break
+        //     const check = game[row+i][column+i]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+        // if (found === EXPECTED) {
+        //     alert(`You won! ${color}`)
+        //     reset()
+        // }
+
+        found = 1
+        //check right diagonal
+        check(found, EXPECTED, color, (i) => {
+            if(row+i>=ROWS) return null
+            if(column-i<0) return null
+            return game[row+i][column-i]
+        })
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(row+i>=ROWS) break
+        //     if(column-i<0) break
+        //     const check = game[row+i][column-i]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+
+        check(found, EXPECTED, color, (i) => {
+            if(row-i<0) return null
+            if(column+i>=COLUMNS) return null
+            return game[row-i][column+i]
+        })
+
+        //
+        // for(let i=found;i<EXPECTED;i++) {
+        //
+        //     if(row-i<0) break
+        //     if(column+i>=COLUMNS) break
+        //     const check = game[row-i][column+i]
+        //
+        //     if(check===color) {
+        //         found++
+        //     } else {
+        //         break
+        //     }
+        // }
+        //
+        // if (found === EXPECTED) {
+        //     alert(`You won! ${color}`)
+        //     reset()
+        // }
+
+        //things that change:
+        //the validations to be made over the indexes
+        //the index value
+
+        //dependencies:
+        // the value of found (calculated on the previous iteration and reset by the current iteration
+        // the value of EXPECTED (always the same)
+        // the value of color (always the same)
+
+    }
+
+    function check(found, EXPECTED, color, fn) {
+        for(let i=found;i<EXPECTED;i++) {
+            const check = fn(i)
+            if(!check) break
+
+            if(check===color) {
+                found++
+            } else {
+                break
+            }
+        }
+
+        if (found === EXPECTED) {
+            alert(`You won! ${color}`)
+            reset()
+        }
+        return found
+    }
+
+    function reset() {
+        freeRows = [];
+        for(let j=0;j<COLUMNS;j++) {
+            freeRows.push(ROWS-1)
+        }
+        game = [];
+        token = 'red';
+        for(let i=0;i<ROWS;i++) {
+            game.push([])
+            for(let j=0;j<COLUMNS;j++) {
+                const id = `${i}${j}`
+                const btn = document.getElementById(id)
+                btn.removeAttribute('disabled')
+                btn.removeAttribute('class')
+                game[i].push(0)
+            }
+        }
+    }
+    start()
+    /*
+    11:38 - 12:10 (32min just for the rendering)
+    making it work took me another 46minutes (without refactoring)
+        connect 4
+        the game consists of making a line of 4 tokens whether vertical, horizontal, right diagonal, left diagonal
+        the token are dropped by the two players from the top, and it goes down to the first available spot in the chosen column
+        the player selects a column and drops the token which travels down to the first available spot in that column
+
+        0.0- the board is a matrix of n x m where n=6 (rows) and m=7 (columns) - OK
+        0.1- the token value switch to represent every player turn by turn
+        1- the token goes down to the first available spot in the chosen column
+     */
+</script>
+</body>
+</html>
